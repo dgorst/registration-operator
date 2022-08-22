@@ -202,7 +202,7 @@ type klusterletConfig struct {
 	RegistrationFeatureGates []string
 
 	HubApiServerHostAlias *operatorapiv1.HubApiServerHostAlias
-	aws                   aws.Options
+	Aws                   aws.Options
 }
 
 // managedClusterClients holds variety of kube client for managed cluster
@@ -247,15 +247,15 @@ func (n *klusterletController) sync(ctx context.Context, controllerContext facto
 		ExternalManagedKubeConfigWorkSecret:         helpers.ExternalManagedKubeConfigWork,
 		InstallMode:                                 klusterlet.Spec.DeployOption.Mode,
 		HubApiServerHostAlias:                       klusterlet.Spec.HubApiServerHostAlias,
+		Aws:                                         aws.Options{},
 	}
 
 	if klusterlet.Annotations != nil {
-		config.aws = aws.Options{}
 		if v, ok := klusterlet.Annotations["open-cluster-management.io/aws-worker-role"]; ok {
-			config.aws.AwsIamWorkerRoleArn = v
+			config.Aws.IamWorkerRoleArn = v
 		}
 		if v, ok := klusterlet.Annotations["open-cluster-management.io/aws-iam-provider"]; ok {
-			config.aws.AwsIamProvider = v
+			config.Aws.IamProvider = v
 		}
 	}
 
