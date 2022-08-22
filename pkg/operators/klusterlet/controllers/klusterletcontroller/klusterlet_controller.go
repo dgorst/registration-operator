@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"open-cluster-management.io/registration-operator/pkg/cloudprovider/aws"
 	"reflect"
 	"strings"
 
@@ -126,7 +127,6 @@ type klusterletController struct {
 	operatorNamespace         string
 	skipHubSecretPlaceholder  bool
 	cache                     resourceapply.ResourceCache
-
 	// buildManagedClusterClientsHostedMode build clients for manged cluster in hosted mode, this can be override for testing
 	buildManagedClusterClientsHostedMode func(ctx context.Context, kubeClient kubernetes.Interface, namespace, secret string) (*managedClusterClients, error)
 }
@@ -144,19 +144,20 @@ func NewKlusterletController(
 	kubeVersion *version.Version,
 	operatorNamespace string,
 	recorder events.Recorder,
-	skipHubSecretPlaceholder bool) factory.Controller {
+	skipHubSecretPlaceholder bool,
+) factory.Controller {
 	controller := &klusterletController{
+		klusterletClient:                     klusterletClient,
+		klusterletLister:                     klusterletInformer.Lister(),
 		kubeClient:                           kubeClient,
 		apiExtensionClient:                   apiExtensionClient,
 		dynamicClient:                        dynamicClient,
-		klusterletClient:                     klusterletClient,
-		klusterletLister:                     klusterletInformer.Lister(),
 		appliedManifestWorkClient:            appliedManifestWorkClient,
 		kubeVersion:                          kubeVersion,
 		operatorNamespace:                    operatorNamespace,
-		buildManagedClusterClientsHostedMode: buildManagedClusterClientsFromSecret,
 		skipHubSecretPlaceholder:             skipHubSecretPlaceholder,
 		cache:                                resourceapply.NewResourceCache(),
+		buildManagedClusterClientsHostedMode: buildManagedClusterClientsFromSecret,
 	}
 
 	return factory.New().WithSync(controller.sync).
@@ -201,6 +202,7 @@ type klusterletConfig struct {
 	RegistrationFeatureGates []string
 
 	HubApiServerHostAlias *operatorapiv1.HubApiServerHostAlias
+	aws                   aws.Options
 }
 
 // managedClusterClients holds variety of kube client for managed cluster
@@ -245,6 +247,16 @@ func (n *klusterletController) sync(ctx context.Context, controllerContext facto
 		ExternalManagedKubeConfigWorkSecret:         helpers.ExternalManagedKubeConfigWork,
 		InstallMode:                                 klusterlet.Spec.DeployOption.Mode,
 		HubApiServerHostAlias:                       klusterlet.Spec.HubApiServerHostAlias,
+	}
+
+	if klusterlet.Annotations != nil {
+		config.aws = aws.Options{}
+		if v, ok := klusterlet.Annotations["open-cluster-management.io/aws-worker-role"]; ok {
+			config.aws.AwsIamWorkerRoleArn = v
+		}
+		if v, ok := klusterlet.Annotations["open-cluster-management.io/aws-iam-provider"]; ok {
+			config.aws.AwsIamProvider = v
+		}
 	}
 
 	managedClusterClients := &managedClusterClients{

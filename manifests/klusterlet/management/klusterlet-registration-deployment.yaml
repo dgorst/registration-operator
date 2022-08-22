@@ -69,6 +69,10 @@ spec:
           {{if eq .Replica 1}}
           - "--disable-leader-election"
           {{end}}
+          {{ if neq .AwsIamWorkerRoleArn "" }}
+          - "--aws-worker-iam-role"
+          -  {{ .AwsIamWorkerRoleArn }}
+          {{ end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
