@@ -69,7 +69,7 @@ spec:
           {{if eq .Replica 1}}
           - "--disable-leader-election"
           {{end}}
-          {{ if neq .Aws.IamWorkerRoleArn "" }}
+          {{ if ne .Aws.IamWorkerRoleArn "" }}
           - "--aws-worker-iam-role"
           -  {{ .Aws.IamWorkerRoleArn }}
           {{ end }}
